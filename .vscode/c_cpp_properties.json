@@ -4,7 +4,9 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "E:\\fw\\edk2\\MdePkg\\Include/**"
+                "E:\\fw\\edk2\\MdePkg\\Include/**",
+                "E:\\fw\\edk2\\ShellPkg\\Include/**",
+                "E:\\fw\\edk2\\MdeModulePkg\\Include/**"
             ],
             "defines": [
                 "_DEBUG",

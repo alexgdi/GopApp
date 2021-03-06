@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "uefi.h": "c",
-        "uefibasetype.h": "c"
+        "uefibasetype.h": "c",
+        "bmpsupportlib.h": "c",
+        "shelllib.h": "c"
     }
 }

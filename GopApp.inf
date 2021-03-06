@@ -36,15 +36,21 @@
 
 [Sources]
   GopApp.c
+  Rectangle.c
+  Rectangle.h
+  Colors.h
 
 [Packages]
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
+  ShellPkg/ShellPkg.dec
 
 [LibraryClasses]
   UefiApplicationEntryPoint
   UefiLib
   PcdLib
+  ShellLib
+  BmpSupportLib
 
 [FeaturePcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintEnable   ## CONSUMES
