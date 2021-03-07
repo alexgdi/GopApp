@@ -23,43 +23,51 @@ EFI_STATUS EFIAPI DrawRectangle(IN UINTN x0, IN UINTN y0, IN UINTN x1, IN UINTN 
     return EFI_SUCCESS;
 }
 
-/* Method to use create a new UI_RECTANGLE struct. This structure is used by all the other functions to modify and draw the object */
-struct UI_RECTANGLE *EFIAPI new_UI_RECTANGLE(IN struct POINT *UpperLeft, IN UINT8 *FrameBufferBase, IN UINTN PixelsPerScanLine, IN UINT32 Width, IN UINT32 Height,
-                                      IN struct UI_STYLE_INFO *StyleInfo)
+/*
+Method to use create a new UI_RECTANGLE struct.
+This structure is used by all the other functions to modify and draw the object
+@param UpperLeft         - Upper left point of rectangle in framebuffer coordinates
+@param FrameBufferBase   - pointer to framebuffer address of 0,0  (upper left)
+@param PixelsPerScanLine - Number of pixels per scan line in framebuffer.
+This is to support aligned framebuffers
+@param Width             - The width of the rectangle
+@param Height            - The height of the rectangle
+@param StyleInfo  - Style info for this (color, sizes, fill types, border, etc)
+@ret   A new UI_RECTANGLE structure used for drawing a rectangle
+*/
+UI_RECTANGLE *
+    EFIAPI
+    new_UI_RECTANGLE(
+        IN POINT *UpperLeft,
+        IN UINT8 *FrameBufferBase,
+        IN UINTN PixelsPerScanLine,
+        IN UINT32 Width,
+        IN UINT32 Height,
+        IN UI_STYLE_INFO *StyleInfo)
 {
     INTN FillDataSize = 0;
 
-    //
     if (FrameBufferBase == NULL)
     {
         ASSERT(NULL != FrameBufferBase);
         return NULL;
     }
 
-    // Проверка точки рисования
     if (UpperLeft == NULL)
     {
         ASSERT(NULL != UpperLeft);
         return NULL;
     }
 
-    // Проверка поддержки стиля
     if (!IsStyleSupported(StyleInfo))
     {
         DEBUG((DEBUG_ERROR, "Style Info requested by caller is not supported!"));
         return NULL;
     }
 
-    // Вычисление размера заполнения с учётом стиля?
     FillDataSize = GetFillDataSize(Width, Height, StyleInfo);
-
-    // Выделяем память
     PRIVATE_UI_RECTANGLE *this = (PRIVATE_UI_RECTANGLE *)AllocateZeroPool(sizeof(PRIVATE_UI_RECTANGLE) + FillDataSize);
-
-    //
     ASSERT(NULL != this);
-
-    // Заполнение структуры
     if (this != NULL)
     {
         this->Public.UpperLeft = *UpperLeft;
@@ -69,31 +77,33 @@ struct UI_RECTANGLE *EFIAPI new_UI_RECTANGLE(IN struct POINT *UpperLeft, IN UINT
         this->Public.Height = Height;
         this->Public.StyleInfo = *StyleInfo;
         this->FillDataSize = FillDataSize;
-        this->Public.StyleInfo.IconInfo.PixelData = NULL;
 
-        // Иконка?
+        this->Public.StyleInfo.IconInfo.PixelData = NULL;
         if ((this->Public.StyleInfo.IconInfo.Height > 0) && (this->Public.StyleInfo.IconInfo.Width > 0) && (StyleInfo->IconInfo.PixelData != NULL))
         {
             INTN PixelDataSize = this->Public.StyleInfo.IconInfo.Height * this->Public.StyleInfo.IconInfo.Width * sizeof(UINT32);
             this->Public.StyleInfo.IconInfo.PixelData = (UINT32 *)AllocatePool(PixelDataSize);
-
             if (this->Public.StyleInfo.IconInfo.PixelData != NULL)
             {
                 CopyMem(this->Public.StyleInfo.IconInfo.PixelData, StyleInfo->IconInfo.PixelData, PixelDataSize);
             }
         }
 
-        // Иннициализация
         PRIVATE_Init(this);
-
         return &this->Public;
     }
 
     return NULL;
 }
 
-/* Method to free all allocated memory of the UI_RECTANGLE */
-VOID EFIAPI delete_UI_RECTANGLE(IN struct UI_RECTANGLE *this)
+/*
+Method to free all allocated memory of the UI_RECTANGLE
+@param this     - ProgressCircle object to draw
+*/
+VOID
+    EFIAPI
+    delete_UI_RECTANGLE(
+        IN UI_RECTANGLE *this)
 {
     if (this != NULL)
     {
@@ -105,8 +115,14 @@ VOID EFIAPI delete_UI_RECTANGLE(IN struct UI_RECTANGLE *this)
     }
 }
 
-/* Method to draw the rectangle to the framebuffer. */
-VOID EFIAPI DrawRect(IN struct UI_RECTANGLE *this)
+/*
+Method to draw the rectangle to the framebuffer.
+@param this     - UI_RECTANGLE object to draw
+*/
+VOID
+    EFIAPI
+    DrawRect(
+        IN UI_RECTANGLE *this)
 {
     PRIVATE_UI_RECTANGLE *priv = (PRIVATE_UI_RECTANGLE *)this;
     UINT8 *StartAddressInFrameBuffer = (UINT8 *)(((UINT32 *)this->FrameBufferBase) + ((this->UpperLeft.Y * this->PixelsPerScanLine) + this->UpperLeft.X));
@@ -169,13 +185,11 @@ VOID EFIAPI DrawRect(IN struct UI_RECTANGLE *this)
         StartAddressInFrameBuffer += (this->PixelsPerScanLine * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL)); //move to next row
     }
 
-    // Нарисовать границу если есть
     if (this->StyleInfo.Border.BorderWidth > 0)
     {
         DrawBorder(priv);
     }
 
-    // Нарисовать иконку если есть
     if (this->StyleInfo.IconInfo.PixelData != NULL)
     {
         DrawIcon(priv);
@@ -184,8 +198,14 @@ VOID EFIAPI DrawRect(IN struct UI_RECTANGLE *this)
 
 /***  PRIVATE METHODS ***/
 
-/** Method checks to see if the StyleInfo is supported by this implementation of UiRectangle **/
-BOOLEAN IsStyleSupported(IN struct UI_STYLE_INFO *StyleInfo)
+/**
+Method checks to see if the StyleInfo is supported by
+this implementation of UiRectangle
+@retval TRUE:   Supported
+@retval FALSE:  Not Supported
+**/
+BOOLEAN
+IsStyleSupported(IN UI_STYLE_INFO *StyleInfo)
 {
     if ((StyleInfo->FillType > FILL_POLKA_SQUARES) || (StyleInfo->FillType < FILL_SOLID))
     {
@@ -198,8 +218,13 @@ BOOLEAN IsStyleSupported(IN struct UI_STYLE_INFO *StyleInfo)
     }
 }
 
-/** Method returns the private datasize in bytes needed to support this style info for this rectangle **/
-INTN GetFillDataSize(IN UINTN Width, IN UINTN Height, IN struct UI_STYLE_INFO *StyleInfo)
+/**
+Method returns the private datasize in bytes needed to support this style info for this rectangle
+**/
+INTN GetFillDataSize(
+    IN UINTN Width,
+    IN UINTN Height,
+    IN UI_STYLE_INFO *StyleInfo)
 {
     INTN PixelBufferLength = 0;
 
@@ -228,27 +253,24 @@ INTN GetFillDataSize(IN UINTN Width, IN UINTN Height, IN struct UI_STYLE_INFO *S
     return PixelBufferLength * sizeof(UINT32); //each pixel is a uint32
 }
 
-//
-VOID PRIVATE_Init(IN struct PRIVATE_UI_RECTANGLE *priv)
+VOID PRIVATE_Init(
+    IN PRIVATE_UI_RECTANGLE *priv)
 {
-    // Init any private data needed for this rectangle
+    //Init any private data needed for this rectangle
     INTN FillDataSizeInPixels = priv->FillDataSize / sizeof(UINT32);
 
-    // Private fill data is used to hold row data needed for the fill
+    //Private fill data is used to hold row data needed for the fill
     switch (priv->Public.StyleInfo.FillType)
     {
-    // сплошная заливка
     case FILL_SOLID:
         SetMem32(priv->FillData, priv->FillDataSize, priv->Public.StyleInfo.FillTypeInfo.SolidFill.FillColor);
         break;
 
-    // горизонтальные полоски
     case FILL_HORIZONTAL_STRIPE:
         SetMem32(priv->FillData, (priv->FillDataSize / 2), priv->Public.StyleInfo.FillTypeInfo.StripeFill.Color1);
         SetMem32(priv->FillData + (priv->Public.Width * sizeof(UINT32)), (priv->FillDataSize / 2), priv->Public.StyleInfo.FillTypeInfo.StripeFill.Color2);
         break;
 
-        // вертикальные полоски
     case FILL_FORWARD_STRIPE:
     case FILL_BACKWARD_STRIPE:
     case FILL_VERTICAL_STRIPE:
@@ -267,7 +289,7 @@ VOID PRIVATE_Init(IN struct PRIVATE_UI_RECTANGLE *priv)
             SetMem32(((UINT32 *)priv->FillData) + i, Len, priv->Public.StyleInfo.FillTypeInfo.StripeFill.Color2);
         }
         break;
-        // в шахматном порядке
+
     case FILL_CHECKERBOARD:
         SetMem32(priv->FillData, priv->FillDataSize, priv->Public.StyleInfo.FillTypeInfo.CheckerboardFill.Color1); //set row to Color1
 
@@ -284,7 +306,6 @@ VOID PRIVATE_Init(IN struct PRIVATE_UI_RECTANGLE *priv)
         }
         break;
 
-        //
     case FILL_POLKA_SQUARES:
         SetMem32(priv->FillData, priv->FillDataSize, priv->Public.StyleInfo.FillTypeInfo.PolkaSquareFill.Color1); //set row to Color1
 
@@ -309,8 +330,11 @@ VOID PRIVATE_Init(IN struct PRIVATE_UI_RECTANGLE *priv)
     }
 }
 
-/** Method used to draw the rectangle border.  Border Width is included in rectangle width. **/
-VOID DrawBorder(IN struct PRIVATE_UI_RECTANGLE *priv)
+/**
+Method used to draw the rectangle border.  Border Width is included in rectangle width.
+**/
+VOID DrawBorder(
+    IN PRIVATE_UI_RECTANGLE *priv)
 {
     UINT32 *TempFB = (UINT32 *)priv->Public.FrameBufferBase;                                            //frame buffer pointer
     TempFB += ((priv->Public.UpperLeft.Y * priv->Public.PixelsPerScanLine) + priv->Public.UpperLeft.X); //move ptr to upper left of uirect
@@ -343,7 +367,8 @@ VOID DrawBorder(IN struct PRIVATE_UI_RECTANGLE *priv)
 /**
 Method used to draw an icon in the rectangle.
 **/
-VOID DrawIcon(IN struct PRIVATE_UI_RECTANGLE *priv)
+VOID DrawIcon(
+    IN PRIVATE_UI_RECTANGLE *priv)
 {
     INT32 OffsetX = 0; //Left edge of icon in coordinate space of the rectangle
     INT32 OffsetY = 0; //Upper edge of icon in coordinate space of the rectangle

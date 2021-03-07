@@ -382,7 +382,11 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	UINTN EventIndex;
 
 	//CONST CHAR16 *BmpFilePath = L"test.bmp";
-	//CpuBreakpoint();
+
+	// Ожидание нажатия клавиши
+	gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
+
+	CpuBreakpoint();
 
 	Print(L"Hello diploma!\n\n");
 
@@ -413,14 +417,11 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	si.IconInfo.Height = 0;
 	si.IconInfo.PixelData = NULL;
 
-	struct POINT ul = {100, 100};
+	POINT ul = {100, 100};
 
-	UI_RECTANGLE *rect = new_UI_RECTANGLE(&ul, gGop->Mode->FrameBufferBase, gGop->Mode->Info->PixelsPerScanLine, 300, 300, &si);
+	UI_RECTANGLE *rect = new_UI_RECTANGLE(&ul, (UINT8 *)((UINTN)gGop->Mode->FrameBufferBase), gGop->Mode->Info->PixelsPerScanLine, 300, 300, &si);
 	DrawRect(rect);
 	//delete_UI_RECTANGLE(rect);
-
-	// Ожидание нажатия клавиши
-	gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
 
 	DEBUG((DEBUG_INFO, "INFO [GOP]: GopApp exit - code=%r\n", Status));
 

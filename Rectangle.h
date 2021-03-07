@@ -6,14 +6,14 @@
 EFI_STATUS EFIAPI DrawRectangle(IN UINTN x0, IN UINTN y0, IN UINTN x1, IN UINTN y1, IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL *p);
 
 // Struct used to represent a point in 2D space
-struct POINT
+typedef struct
 {
     INTN X;
     INTN Y;
-};
+} POINT;
 
 // Defined fill types.
-enum UI_FILL_TYPE
+typedef enum _UI_FILL_TYPE
 {
     FILL_SOLID,
     FILL_FORWARD_STRIPE,
@@ -22,47 +22,47 @@ enum UI_FILL_TYPE
     FILL_HORIZONTAL_STRIPE,
     FILL_CHECKERBOARD,
     FILL_POLKA_SQUARES
-};
+} UI_FILL_TYPE;
 
 typedef enum UI_FILL_TYPE _UI_FILL_TYPE;
 
-union UI_FILL_TYPE_STYLE_UNION
+typedef union
 {
-    struct SolidFill
+    struct
     {
         UINT32 FillColor;
-    };
+    } SolidFill;
 
-    struct StripeFill
+    struct
     {
         UINT32 Color1;
         UINT32 Color2;
         INT32 StripeSize; //Width or Height depending on Stripe type
-    };
+    } StripeFill;
 
-    struct CheckerboardFill
+    struct
     {
         UINT32 Color1;
         UINT32 Color2;
         INT32 CheckboardWidth;
-    };
+    } CheckerboardFill;
 
-    struct PolkaSquareFill
+    struct
     {
         UINT32 Color1;
         UINT32 Color2;
         INT32 DistanceBetweenSquares;
         INT32 SquareWidth;
-    };
-};
+    } PolkaSquareFill;
+} UI_FILL_TYPE_STYLE_UNION;
 
-struct UI_BORDER_STYLE
+typedef struct
 {
     UINT32 BorderColor;
     INT32 BorderWidth;
-};
+} UI_BORDER_STYLE;
 
-enum UI_PLACEMENT
+typedef enum
 {
     INVALID_PLACEMENT,
     TOP_LEFT,
@@ -74,58 +74,94 @@ enum UI_PLACEMENT
     BOTTOM_LEFT,
     BOTTOM_CENTER,
     BOTTOM_RIGHT
-};
+} UI_PLACEMENT;
 
-struct UI_ICON_INFO
+typedef struct
 {
     INT32 Width;
     INT32 Height;
-    enum UI_PLACEMENT Placement;
+    UI_PLACEMENT Placement;
     UINT32 *PixelData;
-};
+} UI_ICON_INFO;
 
-struct UI_STYLE_INFO
+typedef struct
 {
-    struct UI_BORDER_STYLE Border;
-    enum UI_FILL_TYPE FillType;
-    union UI_FILL_TYPE_STYLE_UNION FillTypeInfo;
-    struct UI_ICON_INFO IconInfo;
-};
+    UI_BORDER_STYLE Border;
+    UI_FILL_TYPE FillType;
+    UI_FILL_TYPE_STYLE_UNION FillTypeInfo;
+    UI_ICON_INFO IconInfo;
+} UI_STYLE_INFO;
 
 // Rectangle context
-struct UI_RECTANGLE
+typedef struct
 {
-    struct POINT UpperLeft;
+    POINT UpperLeft;
     UINT32 Width;
     UINT32 Height;
     UINT8 *FrameBufferBase;
     UINTN PixelsPerScanLine; //in framebuffer
-    struct UI_STYLE_INFO StyleInfo;
-};
+    UI_STYLE_INFO StyleInfo;
+} UI_RECTANGLE;
 
-struct PRIVATE_UI_RECTANGLE
+typedef struct
 {
-    struct UI_RECTANGLE Public;
+    UI_RECTANGLE Public;
     INTN FillDataSize;
     UINT8 FillData[0];
-};
+} PRIVATE_UI_RECTANGLE;
 
-struct UI_RECTANGLE *EFIAPI new_UI_RECTANGLE(IN struct POINT *UpperLeft, IN UINT8 *FrameBufferBase, IN UINTN PixelsPerScanLine, IN UINT32 Width, IN UINT32 Height, IN UI_STYLE_INFO *StyleInfo);
+UI_RECTANGLE *
+    EFIAPI
+    new_UI_RECTANGLE(
+        IN POINT *UpperLeft,
+        IN UINT8 *FrameBufferBase,
+        IN UINTN PixelsPerScanLine,
+        IN UINT32 Width,
+        IN UINT32 Height,
+        IN UI_STYLE_INFO *StyleInfo);
 
-/* Method to free all allocated memory of the UI_RECTANGLE */
-VOID EFIAPI delete_UI_RECTANGLE(IN struct UI_RECTANGLE *this);
+/*
+Method to free all allocated memory of the UI_RECTANGLE
+@param this     - ProgressCircle object to draw
+*/
+VOID
+    EFIAPI
+    delete_UI_RECTANGLE(
+        IN UI_RECTANGLE *this);
 
-/* Method to draw the rectangle to the framebuffer. */
-VOID EFIAPI DrawRect(IN struct UI_RECTANGLE *this);
+/*
+Method to draw the rectangle to the framebuffer.
+@param this     - UI_RECTANGLE object to draw
+*/
+VOID
+    EFIAPI
+    DrawRect(
+        IN UI_RECTANGLE *this);
 
 /***  PRIVATE METHODS ***/
-BOOLEAN IsStyleSupported(IN struct UI_STYLE_INFO *StyleInfo);
 
-/**  Method returns the private datasize in bytes needed to support this style info for this rectangle **/
-INTN GetFillDataSize(IN UINTN Width, IN UINTN Height, IN struct UI_STYLE_INFO *StyleInfo);
+/** 
+Method checks to see if the StyleInfo is supported by
+this implementation of UiRectangle
+@retval TRUE:   Supported
+@retval FALSE:  Not Supported
+**/
+BOOLEAN
+IsStyleSupported(IN UI_STYLE_INFO *StyleInfo);
 
-VOID PRIVATE_Init(IN struct PRIVATE_UI_RECTANGLE *priv);
+/** 
+Method returns the private datasize in bytes needed to support this style info for this rectangle
+**/
+INTN GetFillDataSize(
+    IN UINTN Width,
+    IN UINTN Height,
+    IN UI_STYLE_INFO *StyleInfo);
 
-VOID DrawBorder(IN struct PRIVATE_UI_RECTANGLE *priv);
+VOID PRIVATE_Init(
+    IN PRIVATE_UI_RECTANGLE *priv);
 
-VOID DrawIcon(IN struct PRIVATE_UI_RECTANGLE *priv);
+VOID DrawBorder(
+    IN PRIVATE_UI_RECTANGLE *priv);
+
+VOID DrawIcon(
+    IN PRIVATE_UI_RECTANGLE *priv);

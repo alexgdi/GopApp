@@ -39,6 +39,9 @@
   Rectangle.c
   Rectangle.h
   Colors.h
+  #RengeringEngine.h
+  #RengeringEngineInternal.h
+  #RengeringEngine.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -58,3 +61,7 @@
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintString   ## SOMETIMES_CONSUMES
   gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintTimes    ## SOMETIMES_CONSUMES
+
+[BuildOptions]
+*_*_*_CC_FLAGS = /WX-
+

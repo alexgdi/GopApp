@@ -3,6 +3,7 @@
         "uefi.h": "c",
         "uefibasetype.h": "c",
         "bmpsupportlib.h": "c",
-        "shelllib.h": "c"
+        "shelllib.h": "c",
+        "renderingengineinternal.h": "c"
     }
 }
