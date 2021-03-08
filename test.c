@@ -1,4 +1,4 @@
-#include "RenderingEngineInternal.h"
+#include "testInternal.h"
 // ****** Preprocessor constants ******
 //
 #define SURFACE_FRAME_SAMPLE_REFRESH_INTERVAL (200 * 10 * 1000) // Sample surface frames: 200ms in 100ns units
@@ -18,28 +18,17 @@ BOOLEAN mPreExitBootServices = FALSE;
 //
 
 // Rendering Engine driver binding protocol support.
-static EFI_DRIVER_BINDING_PROTOCOL mSREDriverBinding =
-    {
-        SREDriverSupported,
-        SREDriverStart,
-        SREDriverStop,
-        0x12, // TODO
-        NULL,
-        NULL};
+static EFI_DRIVER_BINDING_PROTOCOL mSREDriverBinding = {SREDriverSupported, SREDriverStart, SREDriverStop, 0x12, // TODO
+                                                        NULL, NULL};
 
 // ****** Local function prototypes ******
 //
-static EFI_STATUS
-    EFIAPI
-    SREShowMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                        IN BOOLEAN ShowPointer);
+static EFI_STATUS EFIAPI SREShowMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This, IN BOOLEAN ShowPointer);
 
-static UINT32
-CalculateSurfaceFrameChecksum(IN SRE_SURFACE_LIST *Surface);
+static UINT32 CalculateSurfaceFrameChecksum(IN SRE_SURFACE_LIST *Surface);
 
 VOID DisplaySurfaceList(VOID)
 {
-
     SRE_SURFACE_LIST *Surface;
 
     Surface = mSRE.Surfaces;
@@ -62,10 +51,7 @@ VOID DisplaySurfaceList(VOID)
 // ****** Function declarations ******
 //
 
-static EFI_STATUS
-DrawMousePointer(IN BOOLEAN ShowPointer,
-                 IN UINTN NewOrigX,
-                 IN UINTN NewOrigY)
+static EFI_STATUS DrawMousePointer(IN BOOLEAN ShowPointer, IN UINTN NewOrigX, IN UINTN NewOrigY)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     UINTN Index;
@@ -74,53 +60,25 @@ DrawMousePointer(IN BOOLEAN ShowPointer,
     //
     if (TRUE == mSRE.ShowingMousePointer)
     {
-        mParentGop->Blt(mParentGop,
-                        mSRE.MousePointerBackBuffer,
-                        EfiBltBufferToVideo,
-                        0,
-                        0,
-                        mSRE.MousePointerOrigX,
-                        mSRE.MousePointerOrigY,
-                        mSRE.MousePointerWidth,
-                        mSRE.MousePointerHeight,
-                        0);
+        mParentGop->Blt(mParentGop, mSRE.MousePointerBackBuffer, EfiBltBufferToVideo, 0, 0, mSRE.MousePointerOrigX, mSRE.MousePointerOrigY,
+                        mSRE.MousePointerWidth, mSRE.MousePointerHeight, 0);
     }
 
     // If we don't need to show the mouse pointer, we're done.
-    //
     if (FALSE == ShowPointer)
     {
         goto Exit;
     }
 
     // Otherwise capture screen contents at the new location.
-    //
-    mParentGop->Blt(mParentGop,
-                    mSRE.MousePointerBackBuffer,
-                    EfiBltVideoToBltBuffer,
-                    NewOrigX,
-                    NewOrigY,
-                    0,
-                    0,
-                    mSRE.MousePointerWidth,
-                    mSRE.MousePointerHeight,
-                    0);
+    mParentGop->Blt(mParentGop, mSRE.MousePointerBackBuffer, EfiBltVideoToBltBuffer, NewOrigX, NewOrigY, 0, 0, mSRE.MousePointerWidth,
+                    mSRE.MousePointerHeight, 0);
 
     // Proceed to draw the mouse pointer at the new location.
-    //
-    mParentGop->Blt(mParentGop,
-                    mSRE.MousePointerBltBuffer,
-                    EfiBltVideoToBltBuffer,
-                    NewOrigX,
-                    NewOrigY,
-                    0,
-                    0,
-                    mSRE.MousePointerWidth,
-                    mSRE.MousePointerHeight,
-                    0);
+    mParentGop->Blt(mParentGop, mSRE.MousePointerBltBuffer, EfiBltVideoToBltBuffer, NewOrigX, NewOrigY, 0, 0, mSRE.MousePointerWidth,
+                    mSRE.MousePointerHeight, 0);
 
     // Logically "OR" the mouse pointer into the blt buffer
-    //
     EFI_GRAPHICS_OUTPUT_BLT_PIXEL *pPointer = (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)mSRE.MousePointerBitmap;
 
     for (Index = 0; Index < (mSRE.MousePointerWidth * mSRE.MousePointerHeight); Index++)
@@ -134,56 +92,30 @@ DrawMousePointer(IN BOOLEAN ShowPointer,
     }
 
     // Blt the result to the screen
-    //
-    mParentGop->Blt(mParentGop,
-                    mSRE.MousePointerBltBuffer,
-                    EfiBltBufferToVideo,
-                    0,
-                    0,
-                    NewOrigX,
-                    NewOrigY,
-                    mSRE.MousePointerWidth,
-                    mSRE.MousePointerHeight,
-                    0);
+    mParentGop->Blt(mParentGop, mSRE.MousePointerBltBuffer, EfiBltBufferToVideo, 0, 0, NewOrigX, NewOrigY, mSRE.MousePointerWidth,
+                    mSRE.MousePointerHeight, 0);
 
 Exit:
-
     return Status;
 }
 
-static BOOLEAN
-ValueInRange(IN UINT32 Value,
-             IN UINT32 Min,
-             IN UINT32 Max)
+static BOOLEAN ValueInRange(IN UINT32 Value, IN UINT32 Min, IN UINT32 Max)
 {
     return (Value >= Min) && (Value <= Max);
 }
 
-static BOOLEAN
-RectsOverlap(IN SWM_RECT A,
-             IN SWM_RECT B)
+static BOOLEAN RectsOverlap(IN SWM_RECT A, IN SWM_RECT B)
 {
-    BOOLEAN XOverlap = ValueInRange(A.Left, B.Left, B.Right) ||
-                       ValueInRange(B.Left, A.Left, A.Right);
+    BOOLEAN XOverlap = ValueInRange(A.Left, B.Left, B.Right) || ValueInRange(B.Left, A.Left, A.Right);
 
-    BOOLEAN YOverlap = ValueInRange(A.Top, B.Top, B.Bottom) ||
-                       ValueInRange(B.Top, A.Top, A.Bottom);
+    BOOLEAN YOverlap = ValueInRange(A.Top, B.Top, B.Bottom) || ValueInRange(B.Top, A.Top, A.Bottom);
 
     return XOverlap && YOverlap;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREBlt(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
-           IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL *BltBuffer,
-           IN EFI_GRAPHICS_OUTPUT_BLT_OPERATION BltOperation,
-           IN UINTN SourceX,
-           IN UINTN SourceY,
-           IN UINTN DestinationX,
-           IN UINTN DestinationY,
-           IN UINTN Width,
-           IN UINTN Height,
-           IN UINTN Delta)
+static EFI_STATUS EFIAPI SREBlt(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This, IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL *BltBuffer,
+                                IN EFI_GRAPHICS_OUTPUT_BLT_OPERATION BltOperation, IN UINTN SourceX, IN UINTN SourceY, IN UINTN DestinationX,
+                                IN UINTN DestinationY, IN UINTN Width, IN UINTN Height, IN UINTN Delta)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_TPL PreviousTPL = 0;
@@ -194,25 +126,21 @@ static EFI_STATUS
     BOOLEAN MousePointerState = mSRE.ShowingMousePointer;
 
     // Current blit operation bounding rectangle.
-    //
     BltRect.Left = (UINT32)(DestinationX);
     BltRect.Top = (UINT32)(DestinationY);
     BltRect.Right = (UINT32)(DestinationX + Width - 1);
     BltRect.Bottom = (UINT32)(DestinationY + Height - 1);
 
     // Raise the TPL to avoid interrupting rendering and framebuffer capture.
-    //
     PreviousTPL = gBS->RaiseTPL(TPL_NOTIFY);
 
     // Current mouse pointer bounding rectangle.
-    //
     PointerRect.Left = (UINT32)(mSRE.MousePointerOrigX);
     PointerRect.Top = (UINT32)(mSRE.MousePointerOrigY);
     PointerRect.Right = (UINT32)(mSRE.MousePointerOrigX + mSRE.MousePointerWidth - 1);
     PointerRect.Bottom = (UINT32)(mSRE.MousePointerOrigY + mSRE.MousePointerHeight - 1);
 
     // If the blit intersects with the mouse, we need to temporarily hide the mouse pointer.
-    //
     if ((TRUE == mSRE.ShowingMousePointer) && (TRUE == RectsOverlap(PointerRect, BltRect)))
     {
         SREShowMousePointer(&mSRE.SREProtocol,
@@ -221,7 +149,6 @@ static EFI_STATUS
 
     // First see if the blit intersects with one of the active surfaces.  If it does, restore surface back buffer contents first.  We ignore
     // a surface if the blitting flag is set so that drawing to a surface doesn't trigger a self-refresh.
-    //
     Surface = mSRE.Surfaces;
     while ((NULL != Surface) && (EfiBltVideoToBltBuffer != BltOperation))
     {
@@ -321,8 +248,7 @@ static EFI_STATUS
     //
     if ((TRUE == MousePointerState) && (FALSE == mSRE.ShowingMousePointer))
     {
-        SREShowMousePointer(&mSRE.SREProtocol,
-                            TRUE);
+        SREShowMousePointer(&mSRE.SREProtocol, TRUE);
     }
 
     // Restore the TPL.
@@ -335,24 +261,16 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREQueryMode(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
-                 IN UINT32 ModeNumber,
-                 OUT UINTN *SizeOfInfo,
-                 OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **Info)
+static EFI_STATUS EFIAPI SREQueryMode(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
+                                      IN UINT32 ModeNumber,
+                                      OUT UINTN *SizeOfInfo,
+                                      OUT EFI_GRAPHICS_OUTPUT_MODE_INFORMATION **Info)
 {
 
-    return mParentGop->QueryMode(mParentGop,
-                                 ModeNumber,
-                                 SizeOfInfo,
-                                 Info);
+    return mParentGop->QueryMode(mParentGop, ModeNumber, SizeOfInfo, Info);
 }
 
-static EFI_STATUS
-    EFIAPI
-    SRESetMode(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This,
-               IN UINT32 ModeNumber)
+static EFI_STATUS EFIAPI SRESetMode(IN EFI_GRAPHICS_OUTPUT_PROTOCOL *This, IN UINT32 ModeNumber)
 {
     EFI_STATUS Status;
     EFI_TPL PreviousTPL;
@@ -361,8 +279,7 @@ static EFI_STATUS
     //
     PreviousTPL = gBS->RaiseTPL(TPL_CALLBACK);
 
-    Status = mParentGop->SetMode(mParentGop,
-                                 ModeNumber);
+    Status = mParentGop->SetMode(mParentGop, ModeNumber);
     // Restore the TPL.
     //
     gBS->RestoreTPL(PreviousTPL);
@@ -370,13 +287,11 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SRESetMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                       IN const UINT32 *MouseBitmap,
-                       IN UINT32 Width,
-                       IN UINT32 Height,
-                       IN UINT32 Bpp)
+static EFI_STATUS EFIAPI SRESetMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                            IN const UINT32 *MouseBitmap,
+                                            IN UINT32 Width,
+                                            IN UINT32 Height,
+                                            IN UINT32 Bpp)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     UINTN BuffSize = 0;
@@ -396,7 +311,6 @@ static EFI_STATUS
     PreviousTPL = gBS->RaiseTPL(TPL_NOTIFY);
 
     // Free the existing mouse pointer buffers if they exist.
-    //
     if (NULL != mSRE.MousePointerBitmap)
     {
         FreePool(mSRE.MousePointerBitmap);
@@ -471,10 +385,8 @@ Exit:
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREShowMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                        IN BOOLEAN ShowPointer)
+static EFI_STATUS EFIAPI SREShowMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                             IN BOOLEAN ShowPointer)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 
@@ -497,11 +409,9 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREMoveMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                        IN UINT32 OrigX,
-                        IN UINT32 OrigY)
+static EFI_STATUS EFIAPI SREMoveMousePointer(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                             IN UINT32 OrigX,
+                                             IN UINT32 OrigY)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_TPL PreviousTPL = 0;
@@ -544,10 +454,8 @@ Exit:
     return Status;
 }
 
-VOID
-    EFIAPI
-    CheckForPendingPaintRequest(IN EFI_EVENT Event,
-                                IN VOID *Context)
+VOID EFIAPI CheckForPendingPaintRequest(IN EFI_EVENT Event,
+                                        IN VOID *Context)
 {
     SRE_SURFACE_LIST *Surface = (SRE_SURFACE_LIST *)Context;
 
@@ -558,8 +466,7 @@ VOID
     }
 }
 
-static UINT32
-CalculateSurfaceFrameChecksum(IN SRE_SURFACE_LIST *Surface)
+static UINT32 CalculateSurfaceFrameChecksum(IN SRE_SURFACE_LIST *Surface)
 {
     UINT32 Width = (Surface->FrameRect.Right - Surface->FrameRect.Left + 1);
     UINT32 Height = (Surface->FrameRect.Bottom - Surface->FrameRect.Top + 1);
@@ -600,10 +507,8 @@ CalculateSurfaceFrameChecksum(IN SRE_SURFACE_LIST *Surface)
     return Checksum;
 }
 
-VOID
-    EFIAPI
-    SampleSurfaceFrameTimerCallback(IN EFI_EVENT Event,
-                                    IN VOID *Context)
+VOID EFIAPI SampleSurfaceFrameTimerCallback(IN EFI_EVENT Event,
+                                            IN VOID *Context)
 {
     SRE_SURFACE_LIST *Surface;
 
@@ -628,12 +533,10 @@ VOID
     gBS->RestoreTPL(PreviousTPL);
 }
 
-static EFI_STATUS
-    EFIAPI
-    SRECreateSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                     IN EFI_HANDLE ImageHandle,
-                     IN SWM_RECT FrameRect,
-                     OUT EFI_EVENT *PaintEvent)
+static EFI_STATUS EFIAPI SRECreateSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                          IN EFI_HANDLE ImageHandle,
+                                          IN SWM_RECT FrameRect,
+                                          OUT EFI_EVENT *PaintEvent)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     SRE_SURFACE_LIST *Surface;
@@ -740,11 +643,9 @@ Exit:
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREResizeSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                     IN EFI_HANDLE ImageHandle,
-                     IN SWM_RECT *FrameRect)
+static EFI_STATUS EFIAPI SREResizeSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                          IN EFI_HANDLE ImageHandle,
+                                          IN SWM_RECT *FrameRect)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     SRE_SURFACE_LIST *Surface;
@@ -859,11 +760,9 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREActivateSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                       IN EFI_HANDLE ImageHandle,
-                       IN BOOLEAN MakeActive)
+static EFI_STATUS EFIAPI SREActivateSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                            IN EFI_HANDLE ImageHandle,
+                                            IN BOOLEAN MakeActive)
 {
     EFI_STATUS Status = EFI_NOT_FOUND;
     SRE_SURFACE_LIST *Surface;
@@ -1001,10 +900,8 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SREDeleteSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                     IN EFI_HANDLE ImageHandle)
+static EFI_STATUS EFIAPI SREDeleteSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                          IN EFI_HANDLE ImageHandle)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     SRE_SURFACE_LIST *Surface;
@@ -1091,11 +988,9 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    EFIAPI
-    SRESetModeSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
-                      IN EFI_HANDLE ImageHandle,
-                      IN MS_SRE_SURFACE_MODE Mode)
+static EFI_STATUS EFIAPI SRESetModeSurface(IN MS_RENDERING_ENGINE_PROTOCOL *This,
+                                           IN EFI_HANDLE ImageHandle,
+                                           IN MS_SRE_SURFACE_MODE Mode)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     SRE_SURFACE_LIST *Surface;
@@ -1139,8 +1034,7 @@ static EFI_STATUS
     return Status;
 }
 
-static EFI_STATUS
-    InitializeRenderingEngine(VOID)
+static EFI_STATUS InitializeRenderingEngine(VOID)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 
@@ -1214,6 +1108,8 @@ Exit:
     return Status;
 }
 
+// ------------------------------------------------------------------------------------------------------------
+
 /**
     Checks whether the specified controller has the GOP protocol installed on it.
     @param[in] This                 Pointer to the instance of this driver.
@@ -1222,11 +1118,9 @@ Exit:
     @retval EFI_SUCCESS             Found the controller we want to support.
     @retval EFI_UNSUPPORTED         Unsupported controller.
 **/
-EFI_STATUS
-EFIAPI
-SREDriverSupported(IN EFI_DRIVER_BINDING_PROTOCOL *This,
-                   IN EFI_HANDLE Controller,
-                   IN EFI_DEVICE_PATH_PROTOCOL *RemainingDevicePath)
+EFI_STATUS EFIAPI SREDriverSupported(IN EFI_DRIVER_BINDING_PROTOCOL *This,
+                                     IN EFI_HANDLE Controller,
+                                     IN EFI_DEVICE_PATH_PROTOCOL *RemainingDevicePath)
 {
     EFI_STATUS Status = EFI_SUCCESS;
     EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop;
@@ -1241,12 +1135,7 @@ SREDriverSupported(IN EFI_DRIVER_BINDING_PROTOCOL *This,
 
     // Check for the GOP on the controller's handle.
     //
-    Status = gBS->OpenProtocol(Controller,
-                               mMsGopOverrideProtocolGuid,
-                               (VOID **)&Gop,
-                               This->DriverBindingHandle,
-                               Controller,
-                               EFI_OPEN_PROTOCOL_BY_DRIVER);
+    Status = gBS->OpenProtocol(Controller, mMsGopOverrideProtocolGuid, (VOID **)&Gop, This->DriverBindingHandle, Controller, EFI_OPEN_PROTOCOL_BY_DRIVER);
 
     if (EFI_ERROR(Status))
     {
@@ -1273,11 +1162,9 @@ Exit:
     @retval EFI_SUCCESS             Successfully connected to the controller.
     @retval EFI_UNSUPPORTED         Failed to connect.
 **/
-EFI_STATUS
-EFIAPI
-SREDriverStart(IN EFI_DRIVER_BINDING_PROTOCOL *This,
-               IN EFI_HANDLE Controller,
-               IN EFI_DEVICE_PATH_PROTOCOL *RemainingDevicePath)
+EFI_STATUS EFIAPI SREDriverStart(IN EFI_DRIVER_BINDING_PROTOCOL *This,
+                                 IN EFI_HANDLE Controller,
+                                 IN EFI_DEVICE_PATH_PROTOCOL *RemainingDevicePath)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 
@@ -1318,12 +1205,8 @@ Exit:
     @param[in] ChildHandleBuffer    Ignored.
     @retval EFI_SUCCESS             Successfully removed child devices and stopped managing the controller.
 **/
-EFI_STATUS
-EFIAPI
-SREDriverStop(IN EFI_DRIVER_BINDING_PROTOCOL *This,
-              IN EFI_HANDLE Controller,
-              IN UINTN NumberOfChildren,
-              IN EFI_HANDLE *ChildHandleBuffer)
+EFI_STATUS EFIAPI SREDriverStop(IN EFI_DRIVER_BINDING_PROTOCOL *This, IN EFI_HANDLE Controller, IN UINTN NumberOfChildren,
+                                IN EFI_HANDLE *ChildHandleBuffer)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 
@@ -1380,11 +1263,7 @@ Exit:
     @param    Context         Not Used.
    @retval   none
  **/
-VOID
-    EFIAPI
-    OnPreExitBootServicesNotification(
-        IN EFI_EVENT Event,
-        IN VOID *Context)
+VOID EFIAPI OnPreExitBootServicesNotification(IN EFI_EVENT Event, IN VOID *Context)
 {
     mPreExitBootServices = TRUE;
 }
@@ -1396,10 +1275,7 @@ VOID
   @retval EFI_SUCCESS           Initialization completed successfully.
   @retval EFI_OUT_OF_RESOURCES  Insufficient resources to initialize.
 **/
-EFI_STATUS
-EFIAPI
-DriverInit(IN EFI_HANDLE ImageHandle,
-           IN EFI_SYSTEM_TABLE *SystemTable)
+EFI_STATUS EFIAPI DriverInit(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
     EFI_EVENT InitEvent;
     EFI_STATUS Status = EFI_SUCCESS;
@@ -1412,23 +1288,14 @@ DriverInit(IN EFI_HANDLE ImageHandle,
 
     // Install the Driver Binding Protocol.
     //
-    Status = EfiLibInstallDriverBindingComponentName2(ImageHandle,
-                                                      gST,
-                                                      &mSREDriverBinding,
-                                                      ImageHandle,
-                                                      NULL,
-                                                      NULL);
+    Status = EfiLibInstallDriverBindingComponentName2(ImageHandle, gST, &mSREDriverBinding, ImageHandle, NULL, NULL);
 
     ASSERT_EFI_ERROR(Status);
 
     //
     // Register notify function to modify any window deactivate to a black background at PreExitBootServices.
     //
-    Status = gBS->CreateEventEx(EVT_NOTIFY_SIGNAL,
-                                TPL_NOTIFY,
-                                OnPreExitBootServicesNotification,
-                                gImageHandle,
-                                &gMuEventPreExitBootServicesGuid,
+    Status = gBS->CreateEventEx(EVT_NOTIFY_SIGNAL, TPL_NOTIFY, OnPreExitBootServicesNotification, gImageHandle, NULL,
                                 &InitEvent);
 
     if (EFI_ERROR(Status))
@@ -1444,9 +1311,7 @@ DriverInit(IN EFI_HANDLE ImageHandle,
   @param[in] ImageHandle    Image handle this driver.
   @retval EFI_SUCCESS       This function always complete successfully.
 **/
-EFI_STATUS
-EFIAPI
-DriverUnload(IN EFI_HANDLE ImageHandle)
+EFI_STATUS EFIAPI DriverUnload(IN EFI_HANDLE ImageHandle)
 {
     EFI_STATUS Status = EFI_SUCCESS;
 

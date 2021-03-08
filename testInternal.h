@@ -17,7 +17,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
 
-#include "RenderingEngine.h"
+#include "test.h"
 //#include <Protocol/SimpleWindowManager.h>
 
 // ****** Preprocessor constants ******

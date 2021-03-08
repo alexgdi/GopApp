@@ -7,8 +7,8 @@
 //
 #include <Library/ShellLib.h>
 
-#include "Colors.h"
-#include "Rectangle.h"
+//#include "Colors.h"
+//#include "Rectangle.h"
 
 // Очистить экран
 EFI_STATUS EFIAPI ClearScreen()
@@ -407,20 +407,20 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 
 	//DrawBmpImage(BmpFilePath);
 
-	UI_STYLE_INFO si;
-	si.Border.BorderWidth = 0;
+	//UI_STYLE_INFO si;
+	//si.Border.BorderWidth = 0;
 
-	si.FillType = FILL_SOLID;
-	si.FillTypeInfo.SolidFill.FillColor = COLOR_ORANGE;
+	//si.FillType = FILL_SOLID;
+	//si.FillTypeInfo.SolidFill.FillColor = COLOR_ORANGE;
 
-	si.IconInfo.Width = 0;
-	si.IconInfo.Height = 0;
-	si.IconInfo.PixelData = NULL;
+	//si.IconInfo.Width = 0;
+	//si.IconInfo.Height = 0;
+	//si.IconInfo.PixelData = NULL;
 
-	POINT ul = {100, 100};
+	//POINT ul = {100, 100};
 
-	UI_RECTANGLE *rect = new_UI_RECTANGLE(&ul, (UINT8 *)((UINTN)gGop->Mode->FrameBufferBase), gGop->Mode->Info->PixelsPerScanLine, 300, 300, &si);
-	DrawRect(rect);
+	//UI_RECTANGLE *rect = new_UI_RECTANGLE(&ul, (UINT8 *)((UINTN)gGop->Mode->FrameBufferBase), gGop->Mode->Info->PixelsPerScanLine, 300, 300, &si);
+	//DrawRect(rect);
 	//delete_UI_RECTANGLE(rect);
 
 	DEBUG((DEBUG_INFO, "INFO [GOP]: GopApp exit - code=%r\n", Status));

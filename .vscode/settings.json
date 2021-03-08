@@ -4,6 +4,8 @@
         "uefibasetype.h": "c",
         "bmpsupportlib.h": "c",
         "shelllib.h": "c",
-        "renderingengineinternal.h": "c"
+        "renderingengineinternal.h": "c",
+        "rectangle.h": "c",
+        "header.h": "c"
     }
 }
