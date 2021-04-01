@@ -39,10 +39,10 @@
   Rectangle.c
   Rectangle.h
   Colors.h
-  TestWindowManager.h
-  test.h
-  testInternal.h
-  test.c
+  #TestWindowManager.h
+  #test.h
+  #testInternal.h
+  #test.c
 
 [Packages]
   MdePkg/MdePkg.dec
@@ -56,14 +56,14 @@
   ShellLib
   BmpSupportLib
 
-[FeaturePcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintEnable   ## CONSUMES
-
-[Pcd]
-  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintString   ## SOMETIMES_CONSUMES
-  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintTimes    ## SOMETIMES_CONSUMES
-  gMsGraphicsPkgTokenSpaceGuid.PcdMsGopOverrideProtocolGuid
-  gMsGraphicsPkgTokenSpaceGuid.PcdMsGopOverrideProtocolGuid|{0x23, 0xE3, 0x8E, 0xBE, 0x4C, 0x18, 0x24, 0x4E, 0x8E, 0x18, 0x2E, 0x6D, 0xAD, 0xD7, 0x01, 0x60}|VOID*|0x4000012f
+#[FeaturePcd]
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintEnable   ## CONSUMES
+#
+#[Pcd]
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintString   ## SOMETIMES_CONSUMES
+#  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintTimes    ## SOMETIMES_CONSUMES
+#  gMsGraphicsPkgTokenSpaceGuid.PcdMsGopOverrideProtocolGuid
+#  gMsGraphicsPkgTokenSpaceGuid.PcdMsGopOverrideProtocolGuid|{0x23, 0xE3, 0x8E, 0xBE, 0x4C, 0x18, 0x24, 0x4E, 0x8E, 0x18, 0x2E, 0x6D, 0xAD, 0xD7, 0x01, 0x60}|VOID*|0x4000012f
 
 [BuildOptions]
 *_*_*_CC_FLAGS = /WX-
