@@ -7,16 +7,21 @@
 //
 #include <Library/ShellLib.h>
 
-//#include "Colors.h"
+//
+#include "Colors.h"
 //#include "Rectangle.h"
 
 // Очистить экран
-EFI_STATUS EFIAPI ClearScreen()
+EFI_STATUS ClearScreen()
 {
-	gST->ConOut->ClearScreen(gST->ConOut);
+	EFI_STATUS Status;
+
+	Status = gST->ConOut->ClearScreen(gST->ConOut);
+
+	return Status;
 }
 
-EFI_STATUS EFIAPI SystemInfo()
+EFI_STATUS SystemInfo()
 {
 	Print(L"For test proposes:\n");
 	Print(L"System info:\n");
@@ -25,7 +30,7 @@ EFI_STATUS EFIAPI SystemInfo()
 	Print(L"Runtime Services: 0x%p \n\n", gRT);
 }
 
-EFI_STATUS EFIAPI GopInitialize()
+EFI_STATUS GopInit()
 {
 	EFI_STATUS Status;
 
@@ -45,48 +50,107 @@ EFI_STATUS EFIAPI GopInitialize()
 		}
 	}
 
-	Status = gGop->QueryMode(gGop, gGop->Mode == NULL ? 0 : gGop->Mode->Mode, &SizeOfInfo, &info);
+	// Status = gGop->QueryMode(gGop, gGop->Mode == NULL ? 0 : gGop->Mode->Mode, &SizeOfInfo, &info);
 
-	if (EFI_ERROR(Status))
-	{
-		Print(L"Unable to get native mode\n");
-	}
-	else
-	{
-		nativeMode = gGop->Mode->Mode;
-		numModes = gGop->Mode->MaxMode;
-		Print(L"NumModes = %d NativeMode = %d\n", numModes, nativeMode);
-	}
+	// if (EFI_ERROR(Status))
+	// {
+	// 	Print(L"Unable to get native mode\n");
+	// }
+	// else
+	// {
+	// 	nativeMode = gGop->Mode->Mode;
+	// 	numModes = gGop->Mode->MaxMode;
+	// 	Print(L"NumModes = %d NativeMode = %d\n", numModes, nativeMode);
+	// }
 
-	for (UINTN j = 0; j < numModes; j++)
-	{
-		Status = gGop->QueryMode(gGop, (UINT32)j, &SizeOfInfo, &info);
-		Print(L"Mode: %d Resolution: %dx%d PixelFormat: %x PixelPerScanLine: %d %s\n", (UINT32)j, info->HorizontalResolution, info->VerticalResolution,
-			  info->PixelFormat, info->PixelsPerScanLine, j == nativeMode ? L"(current)" : L"");
-	}
+	// for (UINTN j = 0; j < numModes; j++)
+	// {
+	// 	Status = gGop->QueryMode(gGop, (UINT32)j, &SizeOfInfo, &info);
+	// 	Print(L"Mode: %d Resolution: %dx%d PixelFormat: %x PixelPerScanLine: %d %s\n", (UINT32)j, info->HorizontalResolution, info->VerticalResolution,
+	// 		  info->PixelFormat, info->PixelsPerScanLine, j == nativeMode ? L"(current)" : L"");
+	// }
 
-	// Устанавливаем видео режим и получаем Framebuffer
-	UINT32 mode = 4;
+	// // Устанавливаем видео режим и получаем Framebuffer
+	// UINT32 mode = 4;
 
-	Status = gGop->SetMode(gGop, mode);
+	// Status = gGop->SetMode(gGop, mode);
 
-	if (EFI_ERROR(Status))
-	{
-		Print(L"Unable to set mode %03d\n", mode);
-	}
-	else
-	{
-		// get framebuffer
-		Print(L"Framebuffer address %x size %d, Resolution: %dx%d PixelsPerLine: %d MaxMode: %d\n", gGop->Mode->FrameBufferBase,
-			  gGop->Mode->FrameBufferSize, gGop->Mode->Info->HorizontalResolution, gGop->Mode->Info->VerticalResolution,
-			  gGop->Mode->Info->PixelsPerScanLine, gGop->Mode->MaxMode);
-	}
-
-	// Чистим память за собой
-	// if (handles != NULL)
-	// 	FreePool(handles);
+	// if (EFI_ERROR(Status))
+	// {
+	// 	Print(L"Unable to set mode %03d\n", mode);
+	// }
+	// else
+	// {
+	// 	// get framebuffer
+	// 	Print(L"Framebuffer address %x size %d, Resolution: %dx%d PixelsPerLine: %d MaxMode: %d\n", gGop->Mode->FrameBufferBase,
+	// 		  gGop->Mode->FrameBufferSize, gGop->Mode->Info->HorizontalResolution, gGop->Mode->Info->VerticalResolution,
+	// 		  gGop->Mode->Info->PixelsPerScanLine, gGop->Mode->MaxMode);
+	// }
 
 	return EFI_SUCCESS;
+}
+
+EFI_STATUS HiiFontInit()
+{
+	EFI_STATUS Status;
+
+	// Получаем ссылку на экземпляр протокола EFI_HII_FONT_PROTOCOL
+	Status = gBS->LocateProtocol(&gEfiHiiFontProtocolGuid, NULL, (VOID **)&gHiiFontProtocol);
+	if (EFI_ERROR(Status))
+	{
+		Print(L"Error: Could not find a Hii Font Protocol instance!\n");
+		Status = EFI_NOT_FOUND;
+		return EFI_UNSUPPORTED;
+	}
+
+	return EFI_SUCCESS;
+}
+
+//
+EFI_STATUS DrawText(CONST CHAR16 *string, EFI_GRAPHICS_OUTPUT_BLT_PIXEL foregroundcolor, EFI_GRAPHICS_OUTPUT_BLT_PIXEL backgroundcolor)
+{
+	EFI_STATUS Status;
+
+	//
+	EFI_IMAGE_OUTPUT gSystemFrameBuffer;
+	EFI_IMAGE_OUTPUT *pSystemFrameBuffer = &gSystemFrameBuffer;
+
+	//
+	EFI_FONT_DISPLAY_INFO *fontDisplayInfo;
+
+	//
+	fontDisplayInfo = (EFI_FONT_DISPLAY_INFO *)AllocateZeroPool(sizeof(EFI_FONT_DISPLAY_INFO) + StrLen((const CHAR16 *)L"A") * 2 + 2);
+
+	//fontDisplayInfo->ForegroundColor = *fontForegroundColor;
+	fontDisplayInfo->ForegroundColor = foregroundcolor;
+
+	//fontDisplayInfo->BackgroundColor = *fontBackgroundColor;
+	fontDisplayInfo->BackgroundColor = backgroundcolor;
+
+	fontDisplayInfo->FontInfoMask = EFI_FONT_INFO_SYS_FORE_COLOR | EFI_FONT_INFO_SYS_BACK_COLOR | EFI_FONT_INFO_RESIZE;
+
+	fontDisplayInfo->FontInfo.FontStyle = EFI_HII_FONT_STYLE_NORMAL;
+
+	//fontDisplayInfo->FontInfo.FontSize = 200; //50
+
+	CopyMem(fontDisplayInfo->FontInfo.FontName, (const CHAR16 *)L"FZLKSXSJW", StrLen((const CHAR16 *)L"A") * 2 + 2);
+
+	if (gGop == NULL)
+	{
+		Print("Gop == NULL!\n");
+		return EFI_ERROR(-1);
+	}
+
+	gSystemFrameBuffer.Width = (UINT16)gGop->Mode->Info->HorizontalResolution;
+
+	gSystemFrameBuffer.Height = (UINT16)gGop->Mode->Info->VerticalResolution;
+
+	gSystemFrameBuffer.Image.Screen = gGop;
+
+	Status = gHiiFontProtocol->StringToImage(gHiiFontProtocol, EFI_HII_IGNORE_IF_NO_GLYPH | EFI_HII_DIRECT_TO_SCREEN | EFI_HII_OUT_FLAG_TRANSPARENT, string, fontDisplayInfo,
+											 &pSystemFrameBuffer, (UINTN)300, (UINTN)300, 0, 0, 0);
+
+	return Status;
 }
 
 EFI_STATUS EFIAPI DrawBmpImage(CONST CHAR16 *BmpFilePath)
@@ -375,23 +439,194 @@ Done:
 	return Status;
 }
 
-// The Entry Point for Application. The user code starts with this function
-EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+EFI_STATUS GetFontInfo()
 {
-	EFI_STATUS Status = EFI_SUCCESS;
-	UINTN EventIndex;
+	EFI_STATUS Status;
 
-	//CONST CHAR16 *BmpFilePath = L"test.bmp";
+	//структура, из которой получаем текстовую информацию о шрифте
+	EFI_FONT_DISPLAY_INFO *FontInfo;
 
-	// Ожидание нажатия клавиши
-	gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
+	// Gолучим текст с именем найденного шрифта
+	Status = gHiiFontProtocol->GetFontInfo(gHiiFontProtocol, NULL, NULL, &FontInfo, NULL);
 
-	CpuBreakpoint();
+	//
+	Print(L"BackGroundColor: %d %d %d\n", FontInfo->BackgroundColor.Red, FontInfo->BackgroundColor.Green, FontInfo->BackgroundColor.Blue);
 
-	Print(L"Hello diploma!\n\n");
+	Print(L"FontName: %s FontSize: %d FontStyle: %d ForegroundColor: %d %d %d\n", FontInfo->FontInfo.FontName, FontInfo->FontInfo.FontSize, FontInfo->FontInfo.FontStyle, FontInfo->ForegroundColor.Red, FontInfo->ForegroundColor.Blue, FontInfo->ForegroundColor.Green);
 
-	GopInitialize();
+	DEBUG((EFI_D_INFO, "GetFontInfo status = %r, current font has '%s' name\n\r", Status, FontInfo->FontInfo.FontName));
 
+	//CHAR16 TestString[] = L"Тестовая строка, Test String\n\r";
+
+	//Выводим тестовую строку, чтобы проверить, выводится ли русский шрифт
+	//Status = gST->ConOut->OutputString(gST->ConOut, TestString);
+
+	//и смотрим, что нам выдаст строка статуса
+	//DEBUG((EFI_D_INFO, "OutputString status = %r\n\r", Status));
+
+	//Смотрим, какой шрифт установлен в системе
+
+	return EFI_SUCCESS;
+}
+
+GLOBAL_REMOVE_IF_UNREFERENCED EFI_GRAPHICS_OUTPUT_BLT_PIXEL mEfiColors[16] = {
+	{0x00, 0x00, 0x00, 0x00},
+	{0x98, 0x00, 0x00, 0x00},
+	{0x00, 0x98, 0x00, 0x00},
+	{0x98, 0x98, 0x00, 0x00},
+	{0x00, 0x00, 0x98, 0x00},
+	{0x98, 0x00, 0x98, 0x00},
+	{0x00, 0x98, 0x98, 0x00},
+	{0x98, 0x98, 0x98, 0x00},
+	{0x10, 0x10, 0x10, 0x00},
+	{0xff, 0x10, 0x10, 0x00},
+	{0x10, 0xff, 0x10, 0x00},
+	{0xff, 0xff, 0x10, 0x00},
+	{0x10, 0x10, 0xff, 0x00},
+	{0xf0, 0x10, 0xff, 0x00},
+	{0x10, 0xff, 0xff, 0x00},
+	{0xff, 0xff, 0xff, 0x00}};
+
+UINTN TestPrintGraphic(IN UINTN PointX, IN UINTN PointY, IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Foreground,
+					   IN EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Background, IN CHAR16 *Buffer, IN UINTN PrintNum)
+{
+	EFI_STATUS Status;
+
+	UINT32 HorizontalResolution;
+	UINT32 VerticalResolution;
+	UINT32 ColorDepth;
+	UINT32 RefreshRate;
+
+	EFI_HII_FONT_PROTOCOL *HiiFont;
+	EFI_IMAGE_OUTPUT *Blt;
+	EFI_FONT_DISPLAY_INFO FontInfo;
+	EFI_HII_ROW_INFO *RowInfoArray;
+	UINTN RowInfoArraySize;
+
+	EFI_SIMPLE_TEXT_OUTPUT_PROTOCOL *Sto;
+	EFI_HANDLE ConsoleHandle;
+	UINTN Width;
+	UINTN Height;
+	UINTN Delta;
+
+	HorizontalResolution = 0;
+	VerticalResolution = 0;
+	Blt = NULL;
+	RowInfoArray = NULL;
+
+	ConsoleHandle = gST->ConsoleOutHandle;
+
+	ASSERT(ConsoleHandle != NULL);
+
+	//
+	Status = gBS->HandleProtocol(ConsoleHandle, &gEfiSimpleTextOutProtocolGuid, (VOID **)&Sto);
+
+	if (EFI_ERROR(Status))
+	{
+		goto Error;
+	}
+
+	//
+	if (gGop != NULL)
+	{
+		HorizontalResolution = gGop->Mode->Info->HorizontalResolution;
+		VerticalResolution = gGop->Mode->Info->VerticalResolution;
+	}
+
+	ASSERT((HorizontalResolution != 0) && (VerticalResolution != 0));
+
+	// Получаем HiiFontProtocol
+	Status = gBS->LocateProtocol(&gEfiHiiFontProtocolGuid, NULL, (VOID **)&HiiFont);
+	if (EFI_ERROR(Status))
+	{
+		goto Error;
+	}
+
+	Blt = (EFI_IMAGE_OUTPUT *)AllocateZeroPool(sizeof(EFI_IMAGE_OUTPUT));
+	ASSERT(Blt != NULL);
+
+	Blt->Width = (UINT16)(HorizontalResolution);
+	Blt->Height = (UINT16)(VerticalResolution);
+
+	ZeroMem(&FontInfo, sizeof(EFI_FONT_DISPLAY_INFO));
+
+	EFI_FONT_DISPLAY_INFO *ptr = &FontInfo;
+
+	Status = HiiFont->GetFontInfo(HiiFont, NULL, NULL, &ptr, NULL);
+
+	if (EFI_ERROR(Status))
+	{
+		Print(L"FontInfo Error!\n");
+		goto Error;
+	}
+
+	//
+	if (Foreground != NULL)
+	{
+		CopyMem(&FontInfo.ForegroundColor, Foreground, sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+	}
+	else
+	{
+		CopyMem(&FontInfo.ForegroundColor, &mEfiColors[Sto->Mode->Attribute & 0x0f], sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+	}
+
+	//
+	if (Background != NULL)
+	{
+		CopyMem(&FontInfo.BackgroundColor, Background, sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+	}
+	else
+	{
+		CopyMem(&FontInfo.BackgroundColor, &mEfiColors[Sto->Mode->Attribute >> 4], sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL));
+	}
+
+	//
+	if (gGop != NULL)
+	{
+		//
+		Blt->Image.Screen = gGop;
+		Blt->Height = 100;
+		Blt->Width = 100;
+
+		Status = HiiFont->StringToImage(HiiFont,
+										EFI_HII_IGNORE_IF_NO_GLYPH | EFI_HII_OUT_FLAG_CLIP | EFI_HII_OUT_FLAG_CLIP_CLEAN_X | EFI_HII_OUT_FLAG_CLIP_CLEAN_Y | EFI_HII_IGNORE_LINE_BREAK | EFI_HII_DIRECT_TO_SCREEN,
+										Buffer, &FontInfo, &Blt, PointX, PointY, &RowInfoArray, &RowInfoArraySize, NULL);
+		if (EFI_ERROR(Status))
+		{
+			Print(L"String Error!\n");
+			goto Error;
+		}
+	}
+
+	//
+	// Calculate the number of actual printed characters
+	//
+	if (RowInfoArraySize != 0)
+	{
+		PrintNum = RowInfoArray[0].EndIndex - RowInfoArray[0].StartIndex + 1;
+	}
+	else
+	{
+		PrintNum = 0;
+	}
+
+	FreePool(RowInfoArray);
+	FreePool(Blt);
+	return PrintNum;
+
+Error:
+
+	Print(L"Error!");
+
+	if (Blt != NULL)
+	{
+		FreePool(Blt);
+	}
+	return 0;
+}
+
+EFI_STATUS TestDrawRectangles()
+{
 	// Заливка сплошным цветом
 	//EFI_GRAPHICS_OUTPUT_BLT_PIXEL p = MS_GRAPHICS_DARK_GRAY_1_COLOR;
 
@@ -404,24 +639,51 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	//EFI_GRAPHICS_OUTPUT_BLT_PIXEL p2 = MS_GRAPHICS_SKY_BLUE_COLOR;
 
 	//DrawRectangle(700, 200, 100, 100, &p2);
+}
+
+// The Entry Point for Application. The user code starts with this function
+EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
+{
+	EFI_STATUS Status = EFI_SUCCESS;
+
+	//CONST CHAR16 *BmpFilePath = L"test.bmp";
+
+	// Ожидание нажатия клавиши
+	// UINTN EventIndex;
+	//gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
+
+	//CpuBreakpoint();
+
+	EFI_GRAPHICS_OUTPUT_BLT_PIXEL p;
+	EFI_GRAPHICS_OUTPUT_BLT_PIXEL p2;
+
+	p.Red = 255;
+	p.Blue = 0;
+	p.Green = 0;
+
+	p2.Blue = 255;
+	p2.Green = 255;
+	p2.Red = 255;
+
+	// Очистка экрана
+	Status = ClearScreen();
+
+	// Иннициализация Graphics Output Protocol
+	Status = GopInit();
+
+	// Иннициализация HII Font Protocol
+	Status = HiiFontInit();
+
+	// Информация о текущем шрифте
+	//GetFontInfo();
+
+	//Print(L"Hello diploma!\n");
+
+	//TestPrintGraphic(400, 400, &p, &p2, L"11111111111111111111111111111111", 20);
 
 	//DrawBmpImage(BmpFilePath);
 
-	//UI_STYLE_INFO si;
-	//si.Border.BorderWidth = 0;
-
-	//si.FillType = FILL_SOLID;
-	//si.FillTypeInfo.SolidFill.FillColor = COLOR_ORANGE;
-
-	//si.IconInfo.Width = 0;
-	//si.IconInfo.Height = 0;
-	//si.IconInfo.PixelData = NULL;
-
-	//POINT ul = {100, 100};
-
-	//UI_RECTANGLE *rect = new_UI_RECTANGLE(&ul, (UINT8 *)((UINTN)gGop->Mode->FrameBufferBase), gGop->Mode->Info->PixelsPerScanLine, 300, 300, &si);
-	//DrawRect(rect);
-	//delete_UI_RECTANGLE(rect);
+	Status = DrawText(L"Hello DONNTU!111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", p, p2);
 
 	DEBUG((DEBUG_INFO, "INFO [GOP]: GopApp exit - code=%r\n", Status));
 

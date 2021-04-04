@@ -9,5 +9,11 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/PcdLib.h>
 #include <Library/DebugLib.h>
+#include <Protocol/HiiFont.h>
+//#include <Library/HiiLib.h>
 
+//
 EFI_GRAPHICS_OUTPUT_PROTOCOL *gGop;
+
+//
+EFI_HII_FONT_PROTOCOL *gHiiFontProtocol;

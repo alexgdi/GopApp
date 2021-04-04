@@ -1,11 +1,6 @@
 {
+    "edk2-vscode.build.compiler": "VS2019",
     "files.associations": {
-        "uefi.h": "c",
-        "uefibasetype.h": "c",
-        "bmpsupportlib.h": "c",
-        "shelllib.h": "c",
-        "renderingengineinternal.h": "c",
-        "rectangle.h": "c",
         "header.h": "c"
     }
 }
