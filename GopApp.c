@@ -7,6 +7,11 @@
 //
 #include <Library/ShellLib.h>
 
+#include <Protocol/SimpleFileSystem.h>
+#include <Guid/FileSystemVolumeLabelInfo.h>
+#include <Guid/FileSystemInfo.h>
+#include <Guid/FileInfo.h>
+
 //
 #include "Colors.h"
 //#include "Rectangle.h"
@@ -34,7 +39,8 @@ EFI_STATUS GopInit()
 {
 	EFI_STATUS Status;
 
-	// First, try to open GOP on the Console Out handle. If that fails, try a global database search.
+	// Используем дескриптор ConsoleOutHandle для получения протокола GOP,
+	// в случае неудачи выполняем поиск в глобальной базе протоколов
 	Status = gBS->HandleProtocol(gST->ConsoleOutHandle, &gEfiGraphicsOutputProtocolGuid, (VOID **)&gGop);
 	if (EFI_ERROR(Status))
 	{
@@ -59,9 +65,7 @@ EFI_STATUS GetGopInfo()
 	Status = gGop->QueryMode(gGop, gGop->Mode == NULL ? 0 : gGop->Mode->Mode, &SizeOfInfo, &info);
 
 	if (EFI_ERROR(Status))
-	{
 		Print(L"Unable to get native mode\n");
-	}
 	else
 	{
 		nativeMode = gGop->Mode->Mode;
@@ -72,7 +76,8 @@ EFI_STATUS GetGopInfo()
 	for (UINTN j = 0; j < numModes; j++)
 	{
 		Status = gGop->QueryMode(gGop, (UINT32)j, &SizeOfInfo, &info);
-		Print(L"Mode: %d Resolution: %dx%d PixelFormat: %x PixelPerScanLine: %d %s\n", (UINT32)j, info->HorizontalResolution, info->VerticalResolution,
+		Print(L"Mode: %d Resolution: %dx%d PixelFormat: %x PixelPerScanLine: %d %s\n", (UINT32)j,
+			  info->HorizontalResolution, info->VerticalResolution,
 			  info->PixelFormat, info->PixelsPerScanLine, j == nativeMode ? L"(current)" : L"");
 	}
 
@@ -154,7 +159,7 @@ EFI_STATUS DrawText(CONST CHAR16 *string, UINTN x, UINTN y, EFI_GRAPHICS_OUTPUT_
 	fontDisplayInfo->FontInfo.FontStyle = EFI_HII_FONT_STYLE_NORMAL;
 
 	// Высота ячейки символа в пикселях
-	fontDisplayInfo->FontInfo.FontSize = 5;
+	fontDisplayInfo->FontInfo.FontSize = 19;
 
 	//fontDisplayInfo->FontInfoMask = EFI_FONT_INFO_SYS_FORE_COLOR | EFI_FONT_INFO_SYS_BACK_COLOR | EFI_FONT_INFO_RESIZE;
 	fontDisplayInfo->FontInfoMask = EFI_FONT_INFO_SYS_SIZE | EFI_FONT_INFO_SYS_FONT;
@@ -474,16 +479,16 @@ EFI_STATUS GetFontInfo()
 	//структура, из которой получаем текстовую информацию о шрифте
 	EFI_FONT_DISPLAY_INFO *FontInfo;
 
-	// Gолучим текст с именем найденного шрифта
+	// Получение имени текущего шрифта и его параметров
 	Status = gHiiFontProtocol->GetFontInfo(gHiiFontProtocol, NULL, NULL, &FontInfo, NULL);
 
-	Print(L"FontName: %s FontSize: %d FontStyle: %x\n", FontInfo->FontInfo.FontName, FontInfo->FontInfo.FontSize, FontInfo->FontInfo.FontStyle);
-
-	Print(L"Background color RGB(%d, %d, %d)\n", FontInfo->BackgroundColor.Red, FontInfo->BackgroundColor.Green, FontInfo->BackgroundColor.Blue);
-
-	Print(L"Foreground color RGB(%d, %d, %d)\n", FontInfo->ForegroundColor.Red, FontInfo->ForegroundColor.Green, FontInfo->ForegroundColor.Blue);
-
-	Print(L"FontInfoMask %x)\n", FontInfo->FontInfoMask);
+	Print(L"FontName: %s FontSize: %d FontStyle: %x\n", FontInfo->FontInfo.FontName,
+		  FontInfo->FontInfo.FontSize, FontInfo->FontInfo.FontStyle);
+	Print(L"Background color RGB(%d, %d, %d)\n", FontInfo->BackgroundColor.Red,
+		  FontInfo->BackgroundColor.Green, FontInfo->BackgroundColor.Blue);
+	Print(L"Foreground color RGB(%d, %d, %d)\n", FontInfo->ForegroundColor.Red,
+		  FontInfo->ForegroundColor.Green, FontInfo->ForegroundColor.Blue);
+	Print(L"FontInfoMask 0x%08x)\n", FontInfo->FontInfoMask);
 
 	//DEBUG((EFI_D_INFO, "GetFontInfo status = %r, current font has '%s' name\n\r", Status, FontInfo->FontInfo.FontName));
 	return EFI_SUCCESS;
@@ -666,6 +671,108 @@ EFI_STATUS DemoDrawText()
 {
 }
 
+// FILE
+#define BREAK_ERR(x)        \
+	if (EFI_SUCCESS != (x)) \
+	{                       \
+		break;              \
+	}
+
+void TimeOutput(EFI_TIME time)
+{
+	Print(L"%d.%d.%d %d:%d:%d ", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second);
+}
+
+EFI_STATUS
+ListDirectory(EFI_FILE_PROTOCOL *Directory)
+{
+	EFI_STATUS Status = 0;
+	UINTN EventIndex;
+
+	UINTN BufferSize;
+	UINTN ReadSize;
+	EFI_FILE_INFO *FileInfo;
+
+	// EFI_FILE_INFO - структура переменной длины
+	BufferSize = sizeof(EFI_FILE_INFO) + sizeof(CHAR16) * 512;
+	Status = gBS->AllocatePool(EfiBootServicesCode, BufferSize, (VOID **)&FileInfo);
+
+	while (1)
+	{
+		ReadSize = BufferSize;
+
+		// Выполняем чтение записи каталога
+		Status = Directory->Read(Directory, &ReadSize, FileInfo);
+
+		// Если размера передаваемого буфера не хватило, выделить буфер необходимого размера.
+		if (Status == EFI_BUFFER_TOO_SMALL)
+		{
+			BufferSize = ReadSize;
+			BREAK_ERR(Status = gBS->FreePool(FileInfo));
+			BREAK_ERR(Status = gBS->AllocatePool(EfiBootServicesCode, BufferSize, (VOID **)&FileInfo));
+			BREAK_ERR(Status = Directory->Read(Directory, &ReadSize, FileInfo));
+		}
+
+		// Больше нет записей в каталоге, выход.
+		if (ReadSize == 0)
+			break;
+
+		BREAK_ERR(Status);
+
+		// Вывод информации о записи каталога
+		Print(L"%s Size: %d FileSize: %d Physical Size: %d\n", FileInfo->FileName, FileInfo->Size, FileInfo->FileSize, FileInfo->PhysicalSize);
+		Print(L"C: ");
+		TimeOutput(FileInfo->CreateTime);
+		Print(L" A: ");
+		TimeOutput(FileInfo->CreateTime);
+		Print(L" M: ");
+		TimeOutput(FileInfo->CreateTime);
+		Print(L"\n");
+		Print(L"Attr: %s%s%s%s%s%s\n", FileInfo->Attribute & EFI_FILE_READ_ONLY ? L"RO " : L"", FileInfo->Attribute & EFI_FILE_HIDDEN ? L"H " : L"", FileInfo->Attribute & EFI_FILE_SYSTEM ? L"S " : "", FileInfo->Attribute & EFI_FILE_RESERVED ? L"R " : L"", FileInfo->Attribute & EFI_FILE_DIRECTORY ? L"D " : L"", FileInfo->Attribute & EFI_FILE_ARCHIVE ? L"A " : L"");
+
+		// Ожидание нажатия клавиши
+		gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
+	}
+
+	Status = gBS->FreePool(FileInfo);
+	return 0;
+}
+
+EFI_STATUS PointerInit()
+{
+	EFI_STATUS Status;
+
+	// Получаем экземпляр протокола Simple Pointer Protocol
+	Status = gBS->LocateProtocol(&gEfiSimplePointerProtocolGuid, NULL, (VOID **)&gSpp);
+
+	if (EFI_ERROR(Status))
+	{
+		Print(L"Error: Could not find a Simple Pointer Protocol instance!\n");
+		Status = EFI_NOT_FOUND;
+		return EFI_UNSUPPORTED;
+	}
+
+	UINTN handles_count = 10;
+
+	EFI_HANDLE *handles;
+
+	handles = AllocateZeroPool(sizeof(EFI_HANDLE) * handles_count);
+
+	Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimplePointerProtocolGuid, NULL, &handles_count, &handles);
+
+	Print(L"gLocateHandleBuffer=%d num=%d\n", Status, handles_count);
+
+	// Получить протокол по дескриптору
+	Status = gBS->HandleProtocol(handles[1], &gEfiSimplePointerProtocolGuid, (void **)&gSpp);
+
+	if (EFI_ERROR(Status))
+	{
+		Print(L"HandleProtocol error!\n");
+	}
+
+	return EFI_SUCCESS;
+}
+
 // The Entry Point for Application. The user code starts with this function
 EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -674,10 +781,11 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	EFI_GRAPHICS_OUTPUT_BLT_PIXEL p = {.Red = 255, .Green = 0, .Blue = 0};
 	EFI_GRAPHICS_OUTPUT_BLT_PIXEL p2 = {.Red = 0, .Green = 255, .Blue = 0};
 
+	UINTN EventIndex;
+
 	//Print(L"Hello diploma!\n");
 
 	// Ожидание нажатия клавиши
-	// UINTN EventIndex;
 	//gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
 
 	//CpuBreakpoint();
@@ -686,48 +794,88 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	Status = ClearScreen();
 
 	// Иннициализация Graphics Output Protocol
-	Status = GopInit();
+	//Status = GopInit();
 
-	if (Status != EFI_SUCCESS)
+	/*if (Status != EFI_SUCCESS)
 	{
 		Print(L"Gop load error!\n");
 		return EFI_ERROR(Status);
-	}
+	}*/
 
 	// Получаем информацию о GOP
-	GetGopInfo();
+	//GetGopInfo();
+
+	// Ожидание нажатия клавиши
+	//gBS->WaitForEvent(1, &gST->ConIn->WaitForKey, &EventIndex);
 
 	// Устанавливаем видеорежим 4
-	SetGopMode(4);
+	//SetGopMode(4);
+
+	//
+	//DemoDrawRectangles();
 
 	// Иннициализация HII Font Protocol
-	Status = HiiFontInit();
+	//Status = HiiFontInit();
 
-	if (Status != EFI_SUCCESS)
+	/*if (Status != EFI_SUCCESS)
 	{
 		Print(L"Hii load error!\n");
 		return EFI_ERROR(Status);
-	}
-
-	DemoDrawRectangles();
+	}*/
 
 	// Информация о текущем шрифте
-	GetFontInfo();
+	//GetFontInfo();
 
-	//TestPrintGraphic(400, 400, &p, &p2, L"11111111111111111111111111111111", 20);
+	//Status = DrawText(L"HelloDONNTU!\0", 100, 100, p, p2);
+	//Status = DrawText(L"HelloDONNTU!\0", 10, 10, p, p2);
+	//Status = DrawText(L"HelloDONNTU!\0", 10, 500, p, p2);
 
-	//CONST CHAR16 *BmpFilePath = L"test.bmp";
-	//DrawBmpImage(BmpFilePath);
-
-	Status = DrawText(L"HelloDONNTU!\0", 100, 100, p, p2);
-	Status = DrawText(L"HelloDONNTU!\0", 10, 10, p, p2);
-	Status = DrawText(L"HelloDONNTU!\0", 10, 500, p, p2);
-
-	if (Status != EFI_SUCCESS)
+	/*if (Status != EFI_SUCCESS)
 	{
 		Print(L"Draw text error!\n");
 		return EFI_ERROR(Status);
-	}
+	}*/
+
+	// Вывод изображения
+	//CONST CHAR16 *BmpFilePath = L"test.bmp";
+	//DrawBmpImage(BmpFilePath);
+
+	Print(L"Hello!\n");
+
+	// ФАЙЛОВАЯ СИСТЕМА
+	// EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *gSfsp;
+
+	// Status = gBS->LocateProtocol(&gEfiSimpleFileSystemProtocolGuid, NULL, (VOID **)&gSfsp);
+
+	// if (EFI_ERROR(Status))
+	// {
+	// 	Print(L"Error: Could not find a GOP instance!\n");
+	// 	Status = EFI_NOT_FOUND;
+	// 	return EFI_ERROR(-1);
+	// }
+
+	// EFI_FILE_PROTOCOL *gFile1;
+
+	// EFI_FILE_INFO fileinfo;
+	// unsigned fileinfosize = sizeof(EFI_FILE_INFO);
+
+	// EFI_FILE_PROTOCOL *gRoot;
+
+	// Status = gSfsp->OpenVolume(gSfsp, &gRoot);
+
+	// if (EFI_ERROR(Status))
+	// {
+	// 	Print(L"Error: OpenVolume error!\n");
+	// 	Status = EFI_NOT_FOUND;
+	// 	return EFI_ERROR(-1);
+	// }
+
+	// ListDirectory(gRoot);
+
+	// Указатель Мышь
+	PointerInit();
+
+	Print(L"Pointer Mode: %d %d %d %d %d\n", gSpp->Mode->ResolutionX, gSpp->Mode->ResolutionY, gSpp->Mode->ResolutionZ, gSpp->Mode->LeftButton, gSpp->Mode->RightButton);
 
 	DEBUG((DEBUG_INFO, "INFO [GOP]: GopApp exit - code=%r\n", Status));
 

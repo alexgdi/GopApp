@@ -1,6 +1,10 @@
 {
     "edk2-vscode.build.compiler": "VS2019",
     "files.associations": {
-        "header.h": "c"
-    }
+        "header.h": "c",
+        "filesystemvolumelabelinfo.h": "c",
+        "fileinfo.h": "c"
+    },
+    "workbench.preferredDarkColorTheme": "Material Theme Darker",
+    "workbench.colorTheme": "Material Theme Darker"
 }
