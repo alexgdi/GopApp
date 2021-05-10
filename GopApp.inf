@@ -61,6 +61,7 @@
 
 [Guids]
   gEfiFileSystemVolumeLabelInfoIdGuid
+  gEfiFileSystemInfoGuid
 
 #[FeaturePcd]
 #  gEfiMdeModulePkgTokenSpaceGuid.PcdHelloWorldPrintEnable   ## CONSUMES
