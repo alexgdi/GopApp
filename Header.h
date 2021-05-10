@@ -13,6 +13,13 @@
 #include <Protocol/SimplePointer.h>
 //#include <Library/HiiLib.h>
 
+// FILE
+#define BREAK_ERR(x)        \
+    if (EFI_SUCCESS != (x)) \
+    {                       \
+        break;              \
+    }
+
 //
 EFI_GRAPHICS_OUTPUT_PROTOCOL *gGop;
 

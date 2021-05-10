@@ -503,17 +503,22 @@ EFI_STATUS ListVolumes()
 	}
 }
 
-EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
+EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *FilePath)
 {
 	EFI_STATUS Status;
 
-	CONST CHAR16 *BmpFullFilePath;
+	// Файл
+	VOID *FileData;
+	UINTN FileSize;
+	EFI_FILE_INFO *FileInfo;
 
-	VOID *BmpFileData;
+	UINTN BufferSize;
+	UINTN ReadSize;
+
 	VOID *OriginalVideoBufferData;
 
 	EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Blt;
-	EFI_FILE_INFO *BmpFileInfo;
+
 	BOOLEAN CursorModified;
 	BOOLEAN CursorVisible;
 
@@ -532,7 +537,7 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	SHELL_FILE_HANDLE BmpFileHandle;
 
 	CursorModified = FALSE;
-	BmpFileData = NULL;
+	FileData = NULL;
 	OriginalVideoBufferData = NULL;
 
 	// ФАЙЛОВАЯ СИСТЕМА
@@ -559,11 +564,7 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	}
 
 	// Открыть требуемый файл
-	Status = gRoot->Open(gRoot, &File, BmpFilePath, EFI_FILE_MODE_READ, NULL);
-
-	//
-	UINTN FileSize;
-	VOID *FileData;
+	Status = gRoot->Open(gRoot, &File, FilePath, EFI_FILE_MODE_READ, NULL);
 
 	// Открыть файл
 	// Считать до конца
@@ -571,10 +572,6 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	// Вывести GOP на экран
 
 	// Получение размера файла GetFileSize
-
-	UINTN BufferSize;
-	UINTN ReadSize;
-	EFI_FILE_INFO *FileInfo;
 
 	// EFI_FILE_INFO - структура переменной длины
 	BufferSize = sizeof(EFI_FILE_INFO) + sizeof(CHAR16) * 512;
@@ -589,9 +586,9 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	if (Status == EFI_BUFFER_TOO_SMALL)
 	{
 		BufferSize = ReadSize;
-		BREAK_ERR(Status = gBS->FreePool(FileInfo));
-		BREAK_ERR(Status = gBS->AllocatePool(EfiBootServicesCode, ReadSize, (VOID **)&FileInfo));
-		BREAK_ERR(Status = File->GetInfo(File, &gEfiFileInfoGuid, &ReadSize, FileInfo));
+		Status = gBS->FreePool(FileInfo);
+		Status = gBS->AllocatePool(EfiBootServicesCode, ReadSize, (VOID **)&FileInfo);
+		Status = File->GetInfo(File, &gEfiFileInfoGuid, &ReadSize, FileInfo);
 	}
 
 	FileSize = FileInfo->FileSize;
@@ -601,7 +598,7 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 
 	if (FileData == NULL)
 	{
-		Print(L"Error: Insufficient memory available to load file.\n  file name: %s\n  BMP file size: %s\n", BmpFullFilePath, FileSize);
+		Print(L"Error: Insufficient memory available to load file.\n  file name: %s\n  BMP file size: %s\n", FilePath, FileSize);
 		Status = EFI_OUT_OF_RESOURCES;
 		return Status;
 	}
@@ -615,19 +612,15 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	if (Status == EFI_BUFFER_TOO_SMALL)
 	{
 		FileSize = ReadSize;
-		BREAK_ERR(Status = gBS->FreePool(FileData));
-		BREAK_ERR(Status = gBS->AllocatePool(EfiBootServicesCode, FileSize, (VOID **)&FileData));
-		BREAK_ERR(Status = File->Read(File, &ReadSize, FileData));
+		Status = gBS->FreePool(FileData);
+		Status = gBS->AllocatePool(EfiBootServicesCode, FileSize, (VOID **)&FileData);
+		Status = File->Read(File, &ReadSize, FileData);
 	}
-
-	// Освобождение памяти
-	Status = gBS->FreePool(FileInfo);
-	Status = gBS->FreePool(FileData);
 
 	// Закрываем файл
 	File->Close(File);
 
-	//
+	// Получение разрешения экрана
 	HorizontalResolution = gGop->Mode->Info->HorizontalResolution;
 	VerticalResolution = gGop->Mode->Info->VerticalResolution;
 
@@ -652,7 +645,7 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	}
 
 	Print(L"Image information:\n");
-	Print(L"File name: %s\n  File size: %d bytes\n", BmpFullFilePath, BmpFileSize);
+	Print(L"File name: %s\n  File size: %d bytes\n", FilePath, FileSize);
 	Print(L"Dimensions: %d x %d.\n", ImageWidth, ImageHeight);
 
 	if (ImageWidth > HorizontalResolution)
@@ -672,6 +665,7 @@ EFI_STATUS DrawBmpImage1(EFI_HANDLE handle, CONST CHAR16 *BmpFilePath)
 	OriginalVideoBltBufferSize = ImageWidth * ImageHeight * sizeof(EFI_GRAPHICS_OUTPUT_BLT_PIXEL);
 
 	OriginalVideoBufferData = AllocateZeroPool(OriginalVideoBltBufferSize);
+
 	if (OriginalVideoBufferData == NULL)
 	{
 		Print(L"Error: Insufficient memory available to allocate a BLT buffer of size 0x%x\n", OriginalVideoBltBufferSize);
@@ -742,19 +736,24 @@ Done:
 		gST->ConOut->EnableCursor(gST->ConOut, CursorVisible);
 	}
 
-	// Очистка памяти
-	// 	if (Blt != NULL)
-	// 	{
-	// 		FreePool(Blt);
-	// 	}
-	// 	if (BmpFileData != NULL)
-	// 	{
-	// 		FreePool(BmpFileData);
-	// 	}
-	// 	if (OriginalVideoBufferData != NULL)
-	// 	{
-	// 		FreePool(OriginalVideoBufferData);
-	// 	}
+	//Очистка памяти
+	if (Blt != NULL)
+	{
+		FreePool(Blt);
+	}
+
+	if (FileData != NULL)
+	{
+		FreePool(FileData);
+	}
+
+	if (OriginalVideoBufferData != NULL)
+	{
+		FreePool(OriginalVideoBufferData);
+	}
+
+	// Освобождение памяти
+	FreePool(FileInfo);
 
 	return Status;
 }
@@ -1026,13 +1025,6 @@ EFI_STATUS DemoDrawText()
 {
 }
 
-// FILE
-#define BREAK_ERR(x)        \
-	if (EFI_SUCCESS != (x)) \
-	{                       \
-		break;              \
-	}
-
 void TimeOutput(EFI_TIME time)
 {
 	Print(L"%d.%d.%d %d:%d:%d ", time.Day, time.Month, time.Year, time.Hour, time.Minute, time.Second);
@@ -1191,9 +1183,9 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 		return EFI_ERROR(Status);
 	}*/
 
-	// Вывод изображения
+	GopInit();
 
-	EFI_STATUS Status;
+	// Вывод изображения
 
 	EFI_HANDLE *handles;
 	UINTN handles_count = 10;
