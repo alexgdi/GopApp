@@ -1120,6 +1120,42 @@ EFI_STATUS PointerInit()
 	return EFI_SUCCESS;
 }
 
+// Не работает
+EFI_STATUS LoadDriver(EFI_HANDLE handle, CONST CHAR16 *DriverPath)
+{
+	EFI_STATUS Status;
+
+	EFI_HANDLE DriverHandle;
+	EFI_DEVICE_PATH_PROTOCOL *FileDevPath = NULL;
+
+	//FileDevPath = FileDevicePath(handle, DriverPath);
+
+	if (!IsDevicePathValid(FileDevPath, 0))
+	{
+		Print(L"Error: Invalid Device path!\n");
+		Status = EFI_NOT_FOUND;
+		return EFI_ERROR(-1);
+	}
+
+	if (FileDevPath == NULL)
+	{
+		Print(L"Error: Could not get driver device path!\n");
+		Status = EFI_NOT_FOUND;
+		return EFI_ERROR(-1);
+	}
+
+	Status = gBS->LoadImage(FALSE, gImageHandle, FileDevPath, NULL, NULL, &DriverHandle);
+
+	if (EFI_ERROR(Status))
+	{
+		Print(L"Error: Could not load driver!\n");
+		Status = EFI_NOT_FOUND;
+		return EFI_ERROR(-1);
+	}
+
+	return EFI_SUCCESS;
+}
+
 // The Entry Point for Application. The user code starts with this function
 EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *SystemTable)
 {
@@ -1141,13 +1177,13 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	Status = ClearScreen();
 
 	// Иннициализация Graphics Output Protocol
-	//Status = GopInit();
+	Status = GopInit();
 
-	/*if (Status != EFI_SUCCESS)
+	if (Status != EFI_SUCCESS)
 	{
 		Print(L"Gop load error!\n");
 		return EFI_ERROR(Status);
-	}*/
+	}
 
 	// Получаем информацию о GOP
 	//GetGopInfo();
@@ -1159,16 +1195,16 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	//SetGopMode(4);
 
 	//
-	//DemoDrawRectangles();
+	DemoDrawRectangles();
 
 	// Иннициализация HII Font Protocol
-	//Status = HiiFontInit();
+	Status = HiiFontInit();
 
-	/*if (Status != EFI_SUCCESS)
+	if (Status != EFI_SUCCESS)
 	{
 		Print(L"Hii load error!\n");
 		return EFI_ERROR(Status);
-	}*/
+	}
 
 	// Информация о текущем шрифте
 	//GetFontInfo();
@@ -1177,29 +1213,32 @@ EFI_STATUS EFIAPI UefiMain(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE *Syste
 	//Status = DrawText(L"HelloDONNTU!\0", 10, 10, p, p2);
 	//Status = DrawText(L"HelloDONNTU!\0", 10, 500, p, p2);
 
-	/*if (Status != EFI_SUCCESS)
+	if (Status != EFI_SUCCESS)
 	{
 		Print(L"Draw text error!\n");
 		return EFI_ERROR(Status);
-	}*/
+	}
 
-	GopInit();
-
-	// Вывод изображения
-
-	EFI_HANDLE *handles;
-	UINTN handles_count = 10;
+	//EFI_HANDLE *handles;
+	//UINTN handles_count = 10;
 
 	// Выделение памяти
-	handles = AllocateZeroPool(sizeof(EFI_HANDLE) * handles_count);
+	//handles = AllocateZeroPool(sizeof(EFI_HANDLE) * handles_count);
 
 	// Получение дескрипторов всех томов
-	Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid, NULL, &handles_count, &handles);
+	//Status = gBS->LocateHandleBuffer(ByProtocol, &gEfiSimpleFileSystemProtocolGuid, NULL, &handles_count, &handles);
 
-	CONST CHAR16 *BmpFilePath = L"test.bmp";
-	DrawBmpImage1(handles[2], BmpFilePath);
+	//Print(L"HandlesCount: %d\n", handles_count);
 
-	Print(L"Hello!\n");
+	//Вывод изображения
+	//CONST CHAR16 *BmpFilePath = L"test.bmp";
+	//DrawBmpImage1(handles[2], BmpFilePath);
+
+	//Print(L"Hello!\n");
+
+	// Загрузка драйвера
+	//CONST CHAR16 FilePath = L"\\ntfs_x64.efi";
+	//LoadDriver(handles[0], FilePath);
 
 	// ФАЙЛОВАЯ СИСТЕМА
 	// EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *gSfsp;
